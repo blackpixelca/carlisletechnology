@@ -53,7 +53,7 @@
     tocContainer.appendChild(ul);
 
     const tocItems = tocContainer.querySelectorAll('a');
-    const activeOffset = 120;
+    const scrollOffset = 120;
 
     function setActiveItem(targetId) {
       tocItems.forEach(function(item) {
@@ -65,29 +65,59 @@
       });
     }
 
+    function scrollToHeading(targetElement, behavior) {
+      const targetTop = targetElement.getBoundingClientRect().top + window.scrollY - scrollOffset;
+
+      window.scrollTo({
+        top: Math.max(targetTop, 0),
+        behavior: behavior || "smooth"
+      });
+    }
+
+    function getHeadingTop(heading) {
+      return heading.getBoundingClientRect().top + window.scrollY;
+    }
+
+    function scrollToHeadingWithCorrection(targetId, targetElement) {
+      setActiveItem(targetId);
+      scrollToHeading(targetElement);
+
+      window.setTimeout(function() {
+        scrollToHeading(targetElement, "auto");
+        setActiveItem(targetId);
+      }, 50);
+
+      window.setTimeout(function() {
+        scrollToHeading(targetElement, "auto");
+        setActiveItem(targetId);
+      }, 250);
+    }
+
     tocItems.forEach(function(item) {
       item.addEventListener('click', function(event) {
         event.preventDefault();
+        event.stopPropagation();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+
         var targetId = this.getAttribute('href').substring(1);
         var targetElement = document.getElementById(targetId);
         if (!targetElement) return;
 
-        setActiveItem(targetId);
-        targetElement.scrollIntoView();
-      });
+        scrollToHeadingWithCorrection(targetId, targetElement);
+      }, true);
     });
 
     function updateActiveItem() {
-      var scrollPosition = window.scrollY + activeOffset;
+      var scrollPosition = window.scrollY + scrollOffset;
       var activeHeading = tocHeadings[0];
 
-      if (window.scrollY <= tocHeadings[0].offsetTop) {
+      if (window.scrollY <= getHeadingTop(tocHeadings[0])) {
         setActiveItem(activeHeading.getAttribute("id"));
         return;
       }
 
       tocHeadings.forEach(function(heading) {
-        if (heading.offsetTop <= scrollPosition) {
+        if (getHeadingTop(heading) <= scrollPosition) {
           activeHeading = heading;
         }
       });
@@ -116,8 +146,7 @@
         const targetId = location.hash.substring(1);
         const targetElement = document.getElementById(targetId);
         if (targetElement) {
-          const offset = targetElement.getBoundingClientRect().top - 100;
-          window.scrollTo(window.scrollX, window.scrollY + offset);
+          scrollToHeading(targetElement, "auto");
         }
       }
     }
