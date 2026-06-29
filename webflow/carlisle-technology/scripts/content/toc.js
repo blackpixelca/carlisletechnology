@@ -27,6 +27,7 @@
       return slugCounts[baseSlug] === 1 ? `toc-${baseSlug}` : `toc-${baseSlug}-${slugCounts[baseSlug]}`;
     }
 
+    const tocHeadings = [];
     const tocFragment = document.createDocumentFragment();
     headings.forEach((heading) => {
       const title = heading.textContent.trim();
@@ -42,12 +43,17 @@
       anchor.href = `#${anchorId}`;
       li.appendChild(anchor);
       tocFragment.appendChild(li);
+      tocHeadings.push(heading);
     });
+
+    if (tocHeadings.length === 0) return;
+
     const ul = document.createElement("ul");
     ul.appendChild(tocFragment);
     tocContainer.appendChild(ul);
 
     const tocItems = tocContainer.querySelectorAll('a');
+    const activeOffset = 120;
 
     function setActiveItem(targetId) {
       tocItems.forEach(function(item) {
@@ -71,18 +77,39 @@
       });
     });
 
-    const observer = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const id = entry.target.getAttribute("id");
-          setActiveItem(id);
+    function updateActiveItem() {
+      var scrollPosition = window.scrollY + activeOffset;
+      var activeHeading = tocHeadings[0];
+
+      if (window.scrollY <= tocHeadings[0].offsetTop) {
+        setActiveItem(activeHeading.getAttribute("id"));
+        return;
+      }
+
+      tocHeadings.forEach(function(heading) {
+        if (heading.offsetTop <= scrollPosition) {
+          activeHeading = heading;
         }
       });
-    }, { rootMargin: '0px 0px -50% 0px' });
 
-    headings.forEach(function(heading) {
-      observer.observe(heading);
-    });
+      setActiveItem(activeHeading.getAttribute("id"));
+    }
+
+    var ticking = false;
+    function requestActiveUpdate() {
+      if (ticking) return;
+
+      ticking = true;
+      requestAnimationFrame(function() {
+        updateActiveItem();
+        ticking = false;
+      });
+    }
+
+    updateActiveItem();
+    window.addEventListener("scroll", requestActiveUpdate, { passive: true });
+    window.addEventListener("resize", requestActiveUpdate);
+    window.addEventListener("load", requestActiveUpdate);
 
     function offsetAnchor() {
       if (location.hash.length !== 0) {
